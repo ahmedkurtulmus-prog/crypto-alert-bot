@@ -1,0 +1,46 @@
+name: Binance WebSocket Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: WebSocket paketini kur
+        run: pip install websocket-client
+
+      - name: Binance WebSocket test
+        run: |
+          python - <<'PY'
+          import websocket
+          import json
+
+          url = "wss://fstream.binance.com/ws/btcusdt@kline_15m"
+
+          print("Binance WebSocket'e bağlanılıyor...")
+
+          ws = websocket.create_connection(
+              url,
+              timeout=15
+          )
+
+          print("BAĞLANTI BAŞARILI!")
+
+          message = ws.recv()
+
+          data = json.loads(message)
+
+          print("Binance'den veri geldi:")
+          print(data)
+
+          ws.close()
+
+          print("TEST BAŞARILI!")
+          PY
