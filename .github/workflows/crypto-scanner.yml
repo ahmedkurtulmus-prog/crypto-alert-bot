@@ -22,6 +22,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: WebSocket paketini kur
+        run: pip install websocket-client
+
       - name: Crypto scanner çalıştır
         run: python crypto_scanner.py
         env:
