@@ -1617,10 +1617,18 @@
           "low": 83172.5,
           "close": 83251.5,
           "volume": 472.364
+        },
+        {
+          "time": 1791413100000,
+          "open": 83251.5,
+          "high": 83251.5,
+          "low": 83178.4,
+          "close": 83194.0,
+          "volume": 212.642
         }
       ],
       "pending": null,
-      "last_processed": 1791412200000
+      "last_processed": 1791413100000
     },
     "ETHUSDT": {
       "candles": [
@@ -3239,10 +3247,18 @@
           "low": 2565.83,
           "close": 2568.85,
           "volume": 9676.627
+        },
+        {
+          "time": 1791413100000,
+          "open": 2568.85,
+          "high": 2569.32,
+          "low": 2567.39,
+          "close": 2568.52,
+          "volume": 4892.729
         }
       ],
       "pending": null,
-      "last_processed": 1791412200000
+      "last_processed": 1791413100000
     },
     "SOLUSDT": {
       "candles": [
@@ -4861,10 +4877,18 @@
           "low": 115.81,
           "close": 115.94,
           "volume": 96252.56
+        },
+        {
+          "time": 1791413100000,
+          "open": 115.93,
+          "high": 115.95,
+          "low": 115.84,
+          "close": 115.94,
+          "volume": 42197.92
         }
       ],
       "pending": null,
-      "last_processed": 1791412200000
+      "last_processed": 1791413100000
     },
     "BNBUSDT": {
       "candles": [
@@ -6483,10 +6507,18 @@
           "low": 770.42,
           "close": 771.5,
           "volume": 1269.97
+        },
+        {
+          "time": 1791413100000,
+          "open": 771.5,
+          "high": 772.26,
+          "low": 771.36,
+          "close": 772.26,
+          "volume": 1732.32
         }
       ],
       "pending": null,
-      "last_processed": 1791412200000
+      "last_processed": 1791413100000
     },
     "XRPUSDT": {
       "candles": [
@@ -8105,10 +8137,18 @@
           "low": 1.4165,
           "close": 1.4187,
           "volume": 2908409.5
+        },
+        {
+          "time": 1791413100000,
+          "open": 1.4187,
+          "high": 1.4187,
+          "low": 1.4153,
+          "close": 1.4167,
+          "volume": 3485025.9
         }
       ],
       "pending": null,
-      "last_processed": 1791412200000
+      "last_processed": 1791413100000
     },
     "DOGEUSDT": {
       "candles": [
@@ -9727,10 +9767,18 @@
           "low": 0.08863,
           "close": 0.08874,
           "volume": 21451134.0
+        },
+        {
+          "time": 1791413100000,
+          "open": 0.08874,
+          "high": 0.0888,
+          "low": 0.08865,
+          "close": 0.08871,
+          "volume": 19354032.0
         }
       ],
       "pending": null,
-      "last_processed": 1791412200000
+      "last_processed": 1791413100000
     },
     "AVAXUSDT": {
       "candles": [
@@ -11349,10 +11397,18 @@
           "low": 11.029,
           "close": 11.049,
           "volume": 251562.0
+        },
+        {
+          "time": 1791413100000,
+          "open": 11.048,
+          "high": 11.105,
+          "low": 11.035,
+          "close": 11.071,
+          "volume": 151976.0
         }
       ],
       "pending": null,
-      "last_processed": 1791412200000
+      "last_processed": 1791413100000
     },
     "LINKUSDT": {
       "candles": [
@@ -12971,10 +13027,18 @@
           "low": 13.292,
           "close": 13.292,
           "volume": 67581.05
+        },
+        {
+          "time": 1791413100000,
+          "open": 13.294,
+          "high": 13.316,
+          "low": 13.278,
+          "close": 13.309,
+          "volume": 62414.82
         }
       ],
       "pending": null,
-      "last_processed": 1791412200000
+      "last_processed": 1791413100000
     }
   }
 }
