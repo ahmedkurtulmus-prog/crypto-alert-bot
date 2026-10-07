@@ -16,7 +16,7 @@ jobs:
       - name: WebSocket paketini kur
         run: pip install websocket-client
 
-      - name: Binance WebSocket test
+      - name: Binance 15m mum verisini oku
         run: |
           python - <<'PY'
           import websocket
@@ -24,23 +24,32 @@ jobs:
 
           url = "wss://fstream.binance.com/market/stream?streams=btcusdt@kline_15m"
 
-          print("Binance WebSocket'e bağlanılıyor...")
+          print("Binance 15m mum akışına bağlanılıyor...")
 
           ws = websocket.create_connection(
               url,
-              timeout=15
+              timeout=30
           )
 
           print("BAĞLANTI BAŞARILI!")
 
-          message = ws.recv()
+          for i in range(3):
+              message = ws.recv()
+              data = json.loads(message)
 
-          data = json.loads(message)
+              k = data["data"]["k"]
 
-          print("Binance'den veri geldi:")
-          print(data)
+              print("")
+              print("===== BTCUSDT 15M =====")
+              print("Açılış :", k["o"])
+              print("Yüksek :", k["h"])
+              print("Düşük  :", k["l"])
+              print("Kapanış:", k["c"])
+              print("Hacim  :", k["v"])
+              print("Mum kapandı mı?:", k["x"])
 
           ws.close()
 
+          print("")
           print("TEST BAŞARILI!")
           PY
