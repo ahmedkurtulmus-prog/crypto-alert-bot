@@ -22,7 +22,7 @@ jobs:
           import websocket
           import json
 
-          url = "wss://fstream.binance.com/ws/btcusdt@kline_15m"
+          url = "wss://fstream.binance.com/market/stream?streams=btcusdt@kline_15m"
 
           print("Binance WebSocket'e bağlanılıyor...")
 
