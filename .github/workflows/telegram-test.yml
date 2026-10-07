@@ -1,0 +1,27 @@
+name: Telegram Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-telegram:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Telegram bağlantısını test et
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          import urllib.request
+
+          token = os.environ["TELEGRAM_BOT_TOKEN"]
+
+          url = f"https://api.telegram.org/bot{token}/getUpdates"
+
+          response = urllib.request.urlopen(url)
+          result = response.read().decode()
+
+          print(result)
+          PY
