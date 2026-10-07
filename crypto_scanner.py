@@ -2,17 +2,14 @@ import json
 import time
 import urllib.request
 import urllib.parse
-from datetime import datetime, timezone
+import os
 
 
 # ============================================================
 # AYARLAR
 # ============================================================
 
-TELEGRAM_BOT_TOKEN = None
-TELEGRAM_CHAT_ID = None
-
-BINANCE_BASE = "https://fapi.binance.com"
+BYBIT_BASE = "https://api.bybit.com"
 
 VOLUME_MULTIPLIER = 5.0
 VOLUME_LOOKBACK = 20
@@ -20,93 +17,144 @@ VOLUME_LOOKBACK = 20
 PIVOT_LEFT = 2
 PIVOT_RIGHT = 2
 
-# LH kırıldıktan sonra fiyatın LH'den en fazla ne kadar
-# yukarıda olmasına izin veriyoruz.
-MAX_BREAKOUT_DISTANCE = 0.02      # %2
+# Kırılım sonrası fiyat LH'den %2'den fazla uzaklaşmışsa
+# peşinden koşmuyoruz.
+MAX_BREAKOUT_DISTANCE = 0.02
 
-# Retest sırasında LH'nin biraz altına sarkmasına
-# küçük bir tolerans veriyoruz.
-RETEST_TOLERANCE = 0.003           # %0.3
+# Retest sırasında LH'nin %0.3 yakınına gelmesi yeterli.
+RETEST_TOLERANCE = 0.003
+
+# Çok fazla API isteği atmamak için en yüksek hacimli
+# bu kadar coin taranacak.
+MAX_SYMBOLS = 250
 
 
 # ============================================================
-# BINANCE VERİ ÇEKME
+# GENEL HTTP
 # ============================================================
 
 def get_json(url):
+
     request = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json"
         }
     )
 
-    with urllib.request.urlopen(request, timeout=15) as response:
-        return json.loads(response.read().decode("utf-8"))
+    with urllib.request.urlopen(request, timeout=20) as response:
+        return json.loads(
+            response.read().decode("utf-8")
+        )
 
 
-def get_symbols():
-    url = f"{BINANCE_BASE}/fapi/v1/exchangeInfo"
-    data = get_json(url)
+# ============================================================
+# BYBIT TICKERS
+# ============================================================
 
-    symbols = []
+def get_tickers():
 
-    for item in data["symbols"]:
-        if (
-            item["status"] == "TRADING"
-            and item["contractType"] == "PERPETUAL"
-            and item["quoteAsset"] == "USDT"
-        ):
-            symbols.append(item["symbol"])
-
-    return symbols
-
-
-def get_klines(symbol, limit=120):
     params = urllib.parse.urlencode({
-        "symbol": symbol,
-        "interval": "15m",
-        "limit": limit
+        "category": "linear"
     })
 
-    url = f"{BINANCE_BASE}/fapi/v1/klines?{params}"
+    url = (
+        f"{BYBIT_BASE}/v5/market/tickers?"
+        f"{params}"
+    )
 
     data = get_json(url)
+
+    if data.get("retCode") != 0:
+        raise RuntimeError(
+            f"Bybit ticker hatası: {data}"
+        )
+
+    tickers = {}
+
+    for item in data["result"]["list"]:
+
+        symbol = item["symbol"]
+
+        # Sadece USDT perpetual piyasalar.
+        if not symbol.endswith("USDT"):
+            continue
+
+        try:
+            last_price = float(item["lastPrice"])
+            turnover_24h = float(
+                item.get("turnover24h", 0)
+            )
+        except (ValueError, TypeError):
+            continue
+
+        tickers[symbol] = {
+            "price": last_price,
+            "turnover": turnover_24h
+        }
+
+    return tickers
+
+
+# ============================================================
+# 15 DAKİKALIK MUM VERİSİ
+# ============================================================
+
+def get_klines(symbol):
+
+    params = urllib.parse.urlencode({
+        "category": "linear",
+        "symbol": symbol,
+        "interval": "15",
+        "limit": 120
+    })
+
+    url = (
+        f"{BYBIT_BASE}/v5/market/kline?"
+        f"{params}"
+    )
+
+    data = get_json(url)
+
+    if data.get("retCode") != 0:
+        raise RuntimeError(
+            f"{symbol} kline hatası: {data}"
+        )
+
+    raw = data["result"]["list"]
 
     candles = []
 
-    for k in data:
+    # Bybit mumları yeniden eskiye sıralıyor.
+    # Biz eski -> yeni kullanacağız.
+    raw = list(reversed(raw))
+
+    for k in raw:
+
         candles.append({
-            "open_time": k[0],
+            "open_time": int(k[0]),
             "open": float(k[1]),
             "high": float(k[2]),
             "low": float(k[3]),
             "close": float(k[4]),
             "volume": float(k[5]),
+            "turnover": float(k[6])
         })
 
     return candles
 
 
-def get_current_prices():
-    url = f"{BINANCE_BASE}/fapi/v1/ticker/price"
-
-    data = get_json(url)
-
-    prices = {}
-
-    for item in data:
-        prices[item["symbol"]] = float(item["price"])
-
-    return prices
-
-
 # ============================================================
-# PIVOT / LH BULMA
+# PIVOT HIGH BULMA
 # ============================================================
 
 def find_pivot_highs(candles):
-    highs = [c["high"] for c in candles]
+
+    highs = [
+        candle["high"]
+        for candle in candles
+    ]
 
     pivots = []
 
@@ -115,16 +163,22 @@ def find_pivot_highs(candles):
 
     for i in range(start, end):
 
-        left_side = highs[i - PIVOT_LEFT:i]
-        right_side = highs[i + 1:i + PIVOT_RIGHT + 1]
+        left = highs[
+            i - PIVOT_LEFT:i
+        ]
 
-        if not left_side or not right_side:
+        right = highs[
+            i + 1:i + PIVOT_RIGHT + 1
+        ]
+
+        if not left or not right:
             continue
 
         if (
-            highs[i] > max(left_side)
-            and highs[i] >= max(right_side)
+            highs[i] > max(left)
+            and highs[i] >= max(right)
         ):
+
             pivots.append({
                 "index": i,
                 "price": highs[i]
@@ -133,180 +187,78 @@ def find_pivot_highs(candles):
     return pivots
 
 
-def find_last_lh(candles, signal_index):
+# ============================================================
+# SON LOWER HIGH BULMA
+# ============================================================
+
+def find_last_lh(candles, before_index):
+
     pivots = find_pivot_highs(candles)
 
-    # Sadece sinyal mumundan önce oluşmuş pivotları kullan.
-    valid_pivots = [
-        p for p in pivots
-        if p["index"] < signal_index
+    valid = [
+        pivot
+        for pivot in pivots
+        if pivot["index"] < before_index
     ]
 
-    if len(valid_pivots) < 2:
+    if len(valid) < 2:
         return None
 
-    # En son oluşan Lower High'ı geriye doğru ara.
-    for i in range(len(valid_pivots) - 1, 0, -1):
+    # En son oluşan Lower High'ı geriye doğru bul.
+    for i in range(len(valid) - 1, 0, -1):
 
-        previous = valid_pivots[i - 1]
-        current = valid_pivots[i]
+        previous = valid[i - 1]
+        current = valid[i]
 
         if current["price"] < previous["price"]:
 
-            return {
-                "index": current["index"],
-                "price": current["price"]
-            }
+            return current
 
     return None
 
 
 # ============================================================
-# RETEST KONTROLÜ
+# SİNYAL KONTROLÜ
 # ============================================================
 
-def check_signal(candles):
+def find_signal(candles):
 
     # Son mum halen oluşuyor olabilir.
-    # Bu nedenle -2 = son kapanmış 15 dakikalık mum.
+    # Bu yüzden son tamamlanmış mumu kullanıyoruz.
     signal_index = len(candles) - 2
 
-    if signal_index < VOLUME_LOOKBACK + 5:
+    if signal_index < 30:
         return None
 
-    signal = candles[signal_index]
+    # --------------------------------------------------------
+    # SON LH
+    # --------------------------------------------------------
 
-    # ========================================================
-    # 1. HACİM
-    # ========================================================
-
-    previous_volumes = [
-        candles[i]["volume"]
-        for i in range(
-            signal_index - VOLUME_LOOKBACK,
-            signal_index
-        )
-    ]
-
-    average_volume = sum(previous_volumes) / len(previous_volumes)
-
-    if average_volume <= 0:
-        return None
-
-    volume_multiplier = signal["volume"] / average_volume
-
-    # İlk şart:
-    # Son kapanan mum 20 mum ortalamasının en az 5 katı.
-    if volume_multiplier < VOLUME_MULTIPLIER:
-        return None
-
-    # ========================================================
-    # 2. SON LH
-    # ========================================================
-
-    lh = find_last_lh(candles, signal_index)
-
-    if lh is None:
-        return None
-
-    lh_price = lh["price"]
-
-    # ========================================================
-    # 3. LH KIRILIMI
-    # ========================================================
-
-    previous_candle = candles[signal_index - 1]
-
-    # Önceki mum LH altında/eşit,
-    # sinyal mumu LH üzerinde kapanmalı.
-    breakout = (
-        previous_candle["close"] <= lh_price
-        and signal["close"] > lh_price
+    lh = find_last_lh(
+        candles,
+        signal_index
     )
 
-    if not breakout:
-        return None
-
-    # ========================================================
-    # 4. KIRILIM ÇOK UZAMIŞ MI?
-    # ========================================================
-
-    breakout_distance = (
-        signal["close"] - lh_price
-    ) / lh_price
-
-    # %2'den fazla yukarı kaçmışsa peşinden koşmuyoruz.
-    if breakout_distance > MAX_BREAKOUT_DISTANCE:
-        return None
-
-    # ========================================================
-    # 5. RETEST AŞAMASI
-    # ========================================================
-
-    # Burada henüz alarm vermiyoruz.
-    # Önümüzdeki mumlarda LH'nin test edilmesini bekleyeceğiz.
-
-    return {
-        "lh": lh_price,
-        "breakout_index": signal_index,
-        "breakout_close": signal["close"],
-        "volume_multiplier": volume_multiplier
-    }
-
-
-# ============================================================
-# RETEST SONRASI SİNYAL
-# ============================================================
-
-def find_retest_signal(candles):
-
-    signal_index = len(candles) - 2
-
-    if signal_index < VOLUME_LOOKBACK + 10:
-        return None
-
-    # Son kapanmış mumdan geriye doğru
-    # yakın geçmişte oluşmuş LH'ları kontrol ediyoruz.
-    pivots = find_pivot_highs(candles)
-
-    valid_pivots = [
-        p for p in pivots
-        if p["index"] < signal_index
-    ]
-
-    if len(valid_pivots) < 2:
-        return None
-
-    # Son LH
-    lh = None
-
-    for i in range(len(valid_pivots) - 1, 0, -1):
-
-        previous = valid_pivots[i - 1]
-        current = valid_pivots[i]
-
-        if current["price"] < previous["price"]:
-            lh = current
-            break
-
     if lh is None:
         return None
 
     lh_price = lh["price"]
 
-    # ========================================================
-    # LH KIRILIMINDAN SONRAKİ MUMU BUL
-    # ========================================================
+    # --------------------------------------------------------
+    # SON 12 MUM İÇİNDE LH KIRILIMI ARA
+    # --------------------------------------------------------
 
-    breakout_index = None
-
-    # Son 12 adet kapanmış mum içinde kırılım ara.
     search_start = max(
-        lh["index"] + PIVOT_RIGHT + 1,
+        lh["index"] + 1,
         signal_index - 12
     )
 
-    for i in range(search_start, signal_index + 1):
+    breakout_index = None
+
+    for i in range(
+        search_start,
+        signal_index + 1
+    ):
 
         if i <= 0:
             continue
@@ -314,97 +266,151 @@ def find_retest_signal(candles):
         previous_close = candles[i - 1]["close"]
         current_close = candles[i]["close"]
 
+        # Önce LH altında/eşit,
+        # sonra LH üzerinde kapanış.
         if (
             previous_close <= lh_price
             and current_close > lh_price
         ):
+
             breakout_index = i
             break
 
     if breakout_index is None:
         return None
 
-    # Kırılım mumu çok uzamışsa işlem yok.
-    breakout_candle = candles[breakout_index]
+    breakout = candles[breakout_index]
+
+    # --------------------------------------------------------
+    # KIRILIM MUMU ÇOK UZAMIŞ MI?
+    # --------------------------------------------------------
 
     breakout_distance = (
-        breakout_candle["close"] - lh_price
+        breakout["close"] - lh_price
     ) / lh_price
 
     if breakout_distance > MAX_BREAKOUT_DISTANCE:
         return None
 
-    # ========================================================
-    # RETEST KONTROLÜ
-    # ========================================================
+    # --------------------------------------------------------
+    # KIRILIM HACMİ
+    # --------------------------------------------------------
 
-    # Kırılımdan sonra oluşan mumları kontrol ediyoruz.
-    retest_candles = candles[
-        breakout_index + 1:signal_index + 1
-    ]
+    volume_start = (
+        breakout_index - VOLUME_LOOKBACK
+    )
 
-    if not retest_candles:
+    if volume_start < 0:
         return None
 
-    for candle in retest_candles:
-
-        # Fiyat LH'ye kadar geri gelmiş mi?
-        touched_lh = (
-            candle["low"]
-            <= lh_price * (1 + RETEST_TOLERANCE)
+    previous_volumes = [
+        candles[i]["volume"]
+        for i in range(
+            volume_start,
+            breakout_index
         )
+    ]
 
-        if not touched_lh:
-            continue
+    if len(previous_volumes) < VOLUME_LOOKBACK:
+        return None
 
-        # LH'nin altında çok güçlü kapanış yapmışsa
-        # sahte kırılım kabul ediyoruz.
-        invalid_close = (
-            candle["close"]
-            < lh_price
-        )
+    average_volume = (
+        sum(previous_volumes)
+        / len(previous_volumes)
+    )
 
-        if invalid_close:
-            continue
+    if average_volume <= 0:
+        return None
 
-        # Destek tuttu.
-        # Şimdi bu mumun hacmini de kontrol ediyoruz.
-        previous_volumes = [
-            candles[i]["volume"]
-            for i in range(
-                max(0, breakout_index - VOLUME_LOOKBACK),
-                breakout_index
-            )
-        ]
+    volume_multiplier = (
+        breakout["volume"]
+        / average_volume
+    )
 
-        if len(previous_volumes) < VOLUME_LOOKBACK:
-            continue
+    # En az 5x hacim.
+    if volume_multiplier < VOLUME_MULTIPLIER:
+        return None
 
-        average_volume = (
-            sum(previous_volumes)
-            / len(previous_volumes)
-        )
+    # --------------------------------------------------------
+    # RETEST
+    # --------------------------------------------------------
 
-        volume_multiplier = (
-            breakout_candle["volume"]
-            / average_volume
-            if average_volume > 0
-            else 0
-        )
+    # SADECE SON KAPANAN MUM retest yapmışsa alarm veriyoruz.
+    #
+    # Böylece aynı sinyal sonraki çalışmalarda tekrar
+    # tekrar Telegram'a gitmez.
+    retest = candles[signal_index]
 
-        if volume_multiplier < VOLUME_MULTIPLIER:
-            continue
+    # Kırılım mumunun kendisi retest olamaz.
+    if signal_index <= breakout_index:
+        return None
 
-        return {
-            "lh": lh_price,
-            "breakout_index": breakout_index,
-            "retest_index": candles.index(candle),
-            "breakout_close": breakout_candle["close"],
-            "retest_close": candle["close"],
-            "volume_multiplier": volume_multiplier
-        }
+    # Önceki mumlardan biri LH'nin altında kapanmışsa
+    # kırılım başarısız kabul edilir.
+    for i in range(
+        breakout_index + 1,
+        signal_index
+    ):
 
-    return None
+        if candles[i]["close"] < lh_price:
+            return None
+
+    # --------------------------------------------------------
+    # FİYAT LH'YE GERİ GELDİ Mİ?
+    # --------------------------------------------------------
+
+    touched_lh = (
+        retest["low"]
+        <= lh_price * (1 + RETEST_TOLERANCE)
+    )
+
+    if not touched_lh:
+        return None
+
+    # --------------------------------------------------------
+    # RETEST MUMU LH'NİN ALTINDA KAPANMAMALI
+    # --------------------------------------------------------
+
+    if retest["close"] < lh_price:
+        return None
+
+    # --------------------------------------------------------
+    # RETEST SONRASI GÜNCEL DURUM
+    # --------------------------------------------------------
+
+    current_price = retest["close"]
+
+    return {
+        "lh": lh_price,
+        "breakout": breakout["close"],
+        "retest": retest["close"],
+        "current_price": current_price,
+        "volume_multiplier": volume_multiplier,
+        "breakout_distance": breakout_distance * 100,
+        "breakout_index": breakout_index,
+        "retest_index": signal_index
+    }
+
+
+# ============================================================
+# FİYAT GÖRÜNÜMÜ
+# ============================================================
+
+def format_price(price):
+
+    if price >= 1000:
+        return f"{price:,.2f}"
+
+    if price >= 1:
+        return f"{price:.4f}"
+
+    if price >= 0.01:
+        return f"{price:.6f}"
+
+    if price >= 0.0001:
+        return f"{price:.8f}"
+
+    return f"{price:.10f}"
 
 
 # ============================================================
@@ -413,17 +419,23 @@ def find_retest_signal(candles):
 
 def send_telegram(message):
 
-    import os
+    token = os.environ.get(
+        "TELEGRAM_BOT_TOKEN"
+    )
 
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    chat_id = os.environ.get(
+        "TELEGRAM_CHAT_ID"
+    )
 
     if not token or not chat_id:
-        print("Telegram bilgileri bulunamadı.")
-        return
+
+        raise RuntimeError(
+            "Telegram secret bilgileri bulunamadı."
+        )
 
     url = (
-        f"https://api.telegram.org/bot{token}/sendMessage"
+        f"https://api.telegram.org/"
+        f"bot{token}/sendMessage"
     )
 
     data = urllib.parse.urlencode({
@@ -434,79 +446,134 @@ def send_telegram(message):
     request = urllib.request.Request(
         url,
         data=data,
-        method="POST"
+        method="POST",
+        headers={
+            "User-Agent": "Mozilla/5.0"
+        }
     )
 
-    with urllib.request.urlopen(request, timeout=15) as response:
-        print(response.read().decode())
+    with urllib.request.urlopen(
+        request,
+        timeout=20
+    ) as response:
+
+        result = json.loads(
+            response.read().decode("utf-8")
+        )
+
+        if not result.get("ok"):
+            raise RuntimeError(
+                f"Telegram hatası: {result}"
+            )
 
 
 # ============================================================
-# TARAMA
+# ANA TARAMA
 # ============================================================
 
 def scan():
 
-    print("======================================")
+    print("=" * 60)
     print("CRYPTO ALERT BOT")
-    print("15M LH BREAK + RETEST SCANNER")
-    print("======================================")
+    print("BYBIT 15M LH + BREAKOUT + RETEST")
+    print("=" * 60)
 
-    symbols = get_symbols()
+    print("\nBybit piyasa verileri alınıyor...")
 
-    print(f"Toplam sembol: {len(symbols)}")
+    tickers = get_tickers()
 
-    prices = get_current_prices()
+    print(
+        f"Toplam USDT sembolü: {len(tickers)}"
+    )
+
+    # 24 saatlik işlem hacmine göre sırala.
+    sorted_symbols = sorted(
+        tickers.keys(),
+        key=lambda symbol:
+            tickers[symbol]["turnover"],
+        reverse=True
+    )
+
+    symbols = sorted_symbols[:MAX_SYMBOLS]
+
+    print(
+        f"Taranacak sembol sayısı: {len(symbols)}"
+    )
 
     signals = []
 
-    for number, symbol in enumerate(symbols, start=1):
+    for number, symbol in enumerate(
+        symbols,
+        start=1
+    ):
 
         try:
 
             candles = get_klines(symbol)
 
-            signal = find_retest_signal(candles)
+            signal = find_signal(candles)
 
             if signal is None:
                 continue
 
-            current_price = prices.get(symbol)
+            # Ticker'daki gerçek güncel fiyat.
+            current_price = tickers[symbol]["price"]
 
-            if current_price is None:
-                continue
-
-            distance_from_lh = (
-                (current_price - signal["lh"])
+            distance_now = (
+                (
+                    current_price
+                    - signal["lh"]
+                )
                 / signal["lh"]
             ) * 100
 
             message = (
                 "🚨 ERKEN LONG SİNYALİ\n\n"
+
                 f"🪙 {symbol}\n"
-                f"💰 Güncel fiyat: {current_price:.8f}\n\n"
-                f"📌 LH: {signal['lh']:.8f}\n"
-                f"📈 Kırılım: {signal['breakout_close']:.8f}\n"
-                f"🔄 Retest: {signal['retest_close']:.8f}\n\n"
+
+                f"💰 Güncel fiyat: "
+                f"{format_price(current_price)}\n\n"
+
+                f"📌 LH: "
+                f"{format_price(signal['lh'])}\n"
+
+                f"📈 Kırılım: "
+                f"{format_price(signal['breakout'])}\n"
+
+                f"🔄 Retest: "
+                f"{format_price(signal['retest'])}\n\n"
+
                 f"📊 Kırılım hacmi: "
                 f"{signal['volume_multiplier']:.1f}x\n"
-                f"📍 LH'ye mesafe: "
-                f"{distance_from_lh:.2f}%\n\n"
+
+                f"📍 Kırılım mesafesi: "
+                f"{signal['breakout_distance']:.2f}%\n"
+
+                f"📍 Güncel/LH mesafesi: "
+                f"{distance_now:.2f}%\n\n"
+
                 "🟢 LH kırıldı\n"
-                "🟢 LH retest edildi\n"
-                "🟢 Destek olarak tuttu\n\n"
-                "⏱️ Zaman dilimi: 15 dakika"
+                "🟢 Fiyat LH bölgesine geri geldi\n"
+                "🟢 LH destek olarak tutuldu\n"
+                "🟢 Retest mumu LH üzerinde kapandı\n\n"
+
+                "⏱️ Zaman dilimi: 15 dakika\n"
+
+                "⚠️ Sinyal otomatik işlem değildir."
             )
 
-            print("\nSİNYAL:", symbol)
+            print("\n" + "=" * 60)
+            print("SİNYAL BULUNDU:", symbol)
             print(message)
+            print("=" * 60)
 
             send_telegram(message)
 
             signals.append(symbol)
 
-            # Telegram'a arka arkaya çok hızlı istek gitmesin.
-            time.sleep(0.2)
+            # API'yi gereksiz zorlamamak için.
+            time.sleep(0.15)
 
         except Exception as error:
 
@@ -514,10 +581,32 @@ def scan():
                 f"[HATA] {symbol}: {error}"
             )
 
-    print("\n======================================")
-    print(f"Tarama tamamlandı.")
-    print(f"Sinyal sayısı: {len(signals)}")
-    print("======================================")
+        # İlerlemeyi logda görelim.
+        if number % 25 == 0:
+
+            print(
+                f"İlerleme: "
+                f"{number}/{len(symbols)}"
+            )
+
+    print("\n" + "=" * 60)
+    print("TARAMA TAMAMLANDI")
+    print(
+        f"Toplam sinyal: {len(signals)}"
+    )
+
+    if signals:
+        print(
+            "Sinyaller:",
+            ", ".join(signals)
+        )
+    else:
+        print(
+            "Bu taramada şartları sağlayan "
+            "coin bulunamadı."
+        )
+
+    print("=" * 60)
 
 
 if __name__ == "__main__":
