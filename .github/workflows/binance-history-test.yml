@@ -1,0 +1,50 @@
+name: Binance History Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Binance geçmiş veri test
+        run: |
+          python - <<'PY'
+          import urllib.request
+          import zipfile
+          import io
+          import csv
+
+          url = "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/15m/BTCUSDT-15m-2026-10-06.zip"
+
+          print("Binance geçmiş 15m verisine bağlanılıyor...")
+
+          response = urllib.request.urlopen(url, timeout=30)
+          data = response.read()
+
+          print("VERİ BAŞARIYLA İNDİRİLDİ!")
+          print("Dosya boyutu:", len(data), "bytes")
+
+          with zipfile.ZipFile(io.BytesIO(data)) as z:
+              filename = z.namelist()[0]
+              print("Dosya:", filename)
+
+              with z.open(filename) as f:
+                  rows = list(csv.reader(io.TextIOWrapper(f)))
+
+          print("Toplam mum:", len(rows))
+
+          print("")
+          print("SON 3 MUM:")
+          for row in rows[-3:]:
+              print(row[:6])
+
+          print("")
+          print("TEST BAŞARILI!")
+          PY
