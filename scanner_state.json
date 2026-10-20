@@ -3,14 +3,6 @@
     "BTCUSDT": {
       "candles": [
         {
-          "time": 1791957600000,
-          "open": 83434.5,
-          "high": 83548.0,
-          "low": 83306.1,
-          "close": 83548.0,
-          "volume": 875.461
-        },
-        {
           "time": 1791961200000,
           "open": 83398.4,
           "high": 83599.0,
@@ -2001,21 +1993,26 @@
           "low": 81360.2,
           "close": 81383.0,
           "volume": 1024.822
+        },
+        {
+          "time": 1792504800000,
+          "open": 82115.5,
+          "high": 83233.0,
+          "low": 82061.9,
+          "close": 83204.2,
+          "volume": 17013.494
         }
       ],
-      "pending": null,
-      "last_processed": 1792502100000
+      "pending": {
+        "lh": 81589.5,
+        "breakout_price": 83204.2,
+        "volume_ratio": 16.848716918282577,
+        "breakout_time": 1792504800000
+      },
+      "last_processed": 1792504800000
     },
     "ETHUSDT": {
       "candles": [
-        {
-          "time": 1791957600000,
-          "open": 2502.4,
-          "high": 2507.73,
-          "low": 2498.55,
-          "close": 2507.52,
-          "volume": 19987.574
-        },
         {
           "time": 1791961200000,
           "open": 2503.8,
@@ -4007,21 +4004,26 @@
           "low": 2390.45,
           "close": 2390.58,
           "volume": 22964.836
+        },
+        {
+          "time": 1792504800000,
+          "open": 2410.52,
+          "high": 2469.37,
+          "low": 2408.0,
+          "close": 2467.21,
+          "volume": 412086.783
         }
       ],
-      "pending": null,
-      "last_processed": 1792502100000
+      "pending": {
+        "lh": 2415.38,
+        "breakout_price": 2467.21,
+        "volume_ratio": 15.134547504530923,
+        "breakout_time": 1792504800000
+      },
+      "last_processed": 1792504800000
     },
     "SOLUSDT": {
       "candles": [
-        {
-          "time": 1791957600000,
-          "open": 107.13,
-          "high": 107.4,
-          "low": 106.91,
-          "close": 107.38,
-          "volume": 133793.26
-        },
         {
           "time": 1791961200000,
           "open": 107.14,
@@ -6013,21 +6015,26 @@
           "low": 104.28,
           "close": 104.3,
           "volume": 68859.91
+        },
+        {
+          "time": 1792504800000,
+          "open": 105.21,
+          "high": 107.81,
+          "low": 105.15,
+          "close": 107.76,
+          "volume": 1435795.46
         }
       ],
-      "pending": null,
-      "last_processed": 1792502100000
+      "pending": {
+        "lh": 105.43,
+        "breakout_price": 107.76,
+        "volume_ratio": 13.266361495652735,
+        "breakout_time": 1792504800000
+      },
+      "last_processed": 1792504800000
     },
     "BNBUSDT": {
       "candles": [
-        {
-          "time": 1791957600000,
-          "open": 743.8,
-          "high": 744.32,
-          "low": 742.5,
-          "close": 744.28,
-          "volume": 2040.05
-        },
         {
           "time": 1791961200000,
           "open": 743.0,
@@ -8019,21 +8026,21 @@
           "low": 730.12,
           "close": 731.45,
           "volume": 2337.65
+        },
+        {
+          "time": 1792504800000,
+          "open": 733.95,
+          "high": 741.26,
+          "low": 733.42,
+          "close": 741.22,
+          "volume": 27823.87
         }
       ],
       "pending": null,
-      "last_processed": 1792502100000
+      "last_processed": 1792504800000
     },
     "XRPUSDT": {
       "candles": [
-        {
-          "time": 1791957600000,
-          "open": 1.3643,
-          "high": 1.3687,
-          "low": 1.3621,
-          "close": 1.3683,
-          "volume": 4555324.5
-        },
         {
           "time": 1791961200000,
           "open": 1.3677,
@@ -10025,21 +10032,26 @@
           "low": 1.2966,
           "close": 1.2971,
           "volume": 1837152.5
+        },
+        {
+          "time": 1792504800000,
+          "open": 1.3096,
+          "high": 1.3366,
+          "low": 1.3088,
+          "close": 1.3355,
+          "volume": 38323080.5
         }
       ],
-      "pending": null,
-      "last_processed": 1792502100000
+      "pending": {
+        "lh": 1.307,
+        "breakout_price": 1.3355,
+        "volume_ratio": 12.443600836268743,
+        "breakout_time": 1792504800000
+      },
+      "last_processed": 1792504800000
     },
     "DOGEUSDT": {
       "candles": [
-        {
-          "time": 1791957600000,
-          "open": 0.08446,
-          "high": 0.08464,
-          "low": 0.08426,
-          "close": 0.08462,
-          "volume": 27034553.0
-        },
         {
           "time": 1791961200000,
           "open": 0.08454,
@@ -12031,21 +12043,26 @@
           "low": 0.07916,
           "close": 0.07928,
           "volume": 18318216.0
+        },
+        {
+          "time": 1792504800000,
+          "open": 0.0801,
+          "high": 0.08164,
+          "low": 0.08005,
+          "close": 0.08157,
+          "volume": 311163920.0
         }
       ],
-      "pending": null,
-      "last_processed": 1792502100000
+      "pending": {
+        "lh": 0.07987,
+        "breakout_price": 0.08157,
+        "volume_ratio": 11.943440927464751,
+        "breakout_time": 1792504800000
+      },
+      "last_processed": 1792504800000
     },
     "AVAXUSDT": {
       "candles": [
-        {
-          "time": 1791957600000,
-          "open": 10.194,
-          "high": 10.218,
-          "low": 10.172,
-          "close": 10.204,
-          "volume": 146570.0
-        },
         {
           "time": 1791961200000,
           "open": 10.19,
@@ -14037,21 +14054,26 @@
           "low": 9.445,
           "close": 9.445,
           "volume": 61818.0
+        },
+        {
+          "time": 1792504800000,
+          "open": 9.57,
+          "high": 9.803,
+          "low": 9.562,
+          "close": 9.799,
+          "volume": 702621.0
         }
       ],
-      "pending": null,
-      "last_processed": 1792502100000
+      "pending": {
+        "lh": 9.622,
+        "breakout_price": 9.799,
+        "volume_ratio": 7.719990067374843,
+        "breakout_time": 1792504800000
+      },
+      "last_processed": 1792504800000
     },
     "LINKUSDT": {
       "candles": [
-        {
-          "time": 1791957600000,
-          "open": 12.859,
-          "high": 12.9,
-          "low": 12.837,
-          "close": 12.891,
-          "volume": 60912.07
-        },
         {
           "time": 1791961200000,
           "open": 12.877,
@@ -16043,10 +16065,23 @@
           "low": 11.933,
           "close": 11.943,
           "volume": 81941.49
+        },
+        {
+          "time": 1792504800000,
+          "open": 12.092,
+          "high": 12.385,
+          "low": 12.087,
+          "close": 12.379,
+          "volume": 763778.13
         }
       ],
-      "pending": null,
-      "last_processed": 1792502100000
+      "pending": {
+        "lh": 11.944,
+        "breakout_price": 12.379,
+        "volume_ratio": 10.257224113428755,
+        "breakout_time": 1792504800000
+      },
+      "last_processed": 1792504800000
     }
   }
 }
